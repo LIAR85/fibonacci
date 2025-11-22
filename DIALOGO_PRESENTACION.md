@@ -1,36 +1,120 @@
-# Diálogo de Presentación - Calculadora de Fibonacci
+# Diálogo de Presentación - Calculadora de Fibonacci en Ensamblador 8086
 
 ## Presentación del Equipo
 
-**Estudiante 1**: Buenos días profesor, somos el equipo [nombre del equipo] y vamos a presentar nuestro programa de Fibonacci en ensamblador 8086.
+**Estudiante 1**: Buenos días profesor, somos el equipo [nombre del equipo] y presentaremos nuestra Calculadora de Fibonacci desarrollada en lenguaje ensamblador para el procesador Intel 8086.
 
-**Profesor**: Adelante, explíquenme cómo funciona su programa.
+**Profesor**: Excelente, adelante. Cuéntenme sobre la arquitectura y el enfoque que utilizaron.
 
----
+**Estudiante 2**: Con gusto profesor. Nuestro programa implementa un algoritmo iterativo eficiente que calcula la secuencia de Fibonacci para valores de n entre 0 y 24, con validación de entrada, manejo de errores y una interfaz interactiva para el usuario.
 
-## Parte 1: Estructura General del Programa
-
-**Estudiante 2**: Bien profesor, nuestro programa tiene una estructura modular con 4 procedimientos principales. Empezamos con las directivas `.MODEL SMALL` que define el modelo de memoria que usamos.
-
-**Estudiante 1**: Exacto, y usamos `.STACK 100h` para reservar 256 bytes de memoria para la pila. Esto es suficiente para nuestro programa porque no manejamos muchas llamadas anidadas.
-
-**Profesor**: ¿Y por qué eligieron ese modelo de memoria?
-
-**Estudiante 3**: El modelo SMALL es ideal para programas pequeños como el nuestro. Permite hasta 64KB para código y 64KB para datos, que es más que suficiente.
+**Profesor**: Interesante. Explíquenme la estructura técnica del programa.
 
 ---
 
-## Parte 2: Sección de Datos
+## Parte 1: Arquitectura y Modelo de Memoria
 
-**Estudiante 2**: En la sección `.DATA` definimos todos los mensajes que se muestran al usuario y las variables que usamos.
+**Estudiante 3**: Profesor, comenzamos con las directivas fundamentales del ensamblador:
 
-**Estudiante 1**: Por ejemplo, tenemos `numeroN DB ?` que es un byte donde guardamos el número que ingresa el usuario. Usamos `DB` porque n solo va de 0 a 24.
+```assembly
+.MODEL SMALL
+.STACK 100h
+```
 
-**Estudiante 3**: También tenemos `resultado DW ?` que es una palabra de 16 bits (DW = Define Word). La necesitamos de 16 bits porque Fibonacci(24) = 46368, que no cabe en 8 bits.
+**Estudiante 1**: `.MODEL SMALL` define el modelo de memoria que utilizaremos. Este modelo es óptimo para programas pequeños, asignando:
 
-**Profesor**: Bien pensado. ¿Y el buffer?
+- **64 KB para el segmento de código (.CODE)**
+- **64 KB para el segmento de datos (.DATA)**
+- **Punteros cercanos (near pointers)** de 16 bits
 
-**Estudiante 2**: El `buffer DB 6 DUP('$')` lo creamos para convertir números a texto. Reserva 6 posiciones con el caracter '$' que es el terminador de cadenas en DOS.
+**Profesor**: ¿Y por qué eligieron específicamente el modelo SMALL?
+
+**Estudiante 2**: Por tres razones técnicas:
+
+1. Nuestro programa es pequeño (aproximadamente 250 líneas)
+2. Los datos que manejamos son mínimos (mensajes y variables pequeñas)
+3. Los punteros near de 16 bits son más eficientes que los far pointers de 32 bits del modelo LARGE
+
+**Estudiante 3**: La directiva `.STACK 100h` reserva 256 bytes (100h en hexadecimal) para la pila. Esto es suficiente porque:
+
+- No usamos recursión (que consumiría mucha pila)
+- Nuestras llamadas a procedimientos son simples y poco profundas
+- Cada PUSH guarda 2 bytes, y nuestro máximo de PUSHes anidados es bajo
+
+**Profesor**: Bien fundamentado. ¿Y qué contiene la sección de datos?
+
+---
+
+## Parte 2: Segmento de Datos y Gestión de Memoria
+
+**Estudiante 1**: En la sección `.DATA` definimos estratégicamente nuestras estructuras de datos:
+
+```assembly
+.DATA
+    msgBienvenida   DB 13,10,'==== CALCULADORA DE FIBONACCI ====',13,10,'$'
+    msgPedir        DB 13,10,'Ingrese el valor de n (0-24): $'
+    msgResultado    DB 13,10,'El numero Fibonacci es: $'
+    msgError        DB 13,10,'Error! El valor debe estar entre 0 y 24',13,10,'$'
+    msgOtraVez      DB 13,10,13,10,'Desea calcular otro? (S/N): $'
+
+    numeroN         DB ?
+    resultado       DW ?
+    buffer          DB 6 DUP('$')
+    temp            DW ?
+```
+
+**Estudiante 2**: Permítame explicar cada tipo de dato:
+
+### DB (Define Byte) - 8 bits:
+
+**Estudiante 3**: `numeroN DB ?` es un byte sin inicializar. Elegimos 8 bits porque:
+
+- El rango es 0-24, que cabe perfectamente en un byte (0-255)
+- Ocupa menos memoria que una palabra (DW)
+- Las operaciones con bytes son más rápidas
+
+Los mensajes también usan DB. Los códigos **13,10** son:
+
+- **13 (0Dh)**: Carriage Return (CR) - mueve el cursor al inicio de la línea
+- **10 (0Ah)**: Line Feed (LF) - mueve el cursor a la siguiente línea
+- **'$'**: Terminador de cadena para la interrupción INT 21h, función 09h
+
+**Profesor**: Interesante. ¿Y el DW?
+
+### DW (Define Word) - 16 bits:
+
+**Estudiante 1**: `resultado DW ?` es una palabra de 16 bits porque:
+
+- Fibonacci(24) = **46,368**, que requiere 16 bits
+- Un byte solo almacena hasta 255 (8 bits)
+- 16 bits nos dan rango de 0 a 65,535
+
+Analicemos el crecimiento:
+
+```
+Fib(7)  = 13     → cabe en 8 bits (< 255)
+Fib(12) = 144    → necesita 8 bits
+Fib(13) = 233    → necesita 8 bits
+Fib(14) = 377    → NECESITA 16 bits (> 255)
+Fib(24) = 46,368 → necesita 16 bits
+```
+
+### DUP (Duplicar):
+
+**Estudiante 2**: `buffer DB 6 DUP('$')` crea un array de 6 bytes, todos inicializados con '$':
+
+```
+buffer[0] = '$'
+buffer[1] = '$'
+buffer[2] = '$'
+buffer[3] = '$'
+buffer[4] = '$'
+buffer[5] = '$'
+```
+
+¿Por qué 6? Porque el número más grande (46,368) tiene 5 dígitos + 1 terminador '$'.
+
+**Profesor**: Excelente análisis. Ahora explíquenme el flujo principal del programa.
 
 ---
 
@@ -60,6 +144,7 @@ MOV DS, AX
 **Estudiante 2**: Este procedimiento lee el número que el usuario escribe, dígito por dígito.
 
 **Estudiante 1**: Primero guardamos los registros con PUSH para no perder información:
+
 ```assembly
 PUSH AX
 PUSH BX
@@ -71,6 +156,7 @@ PUSH CX
 **Profesor**: ¿Y cómo convierten el caracter a número?
 
 **Estudiante 2**: Cuando leemos un caracter, viene en código ASCII. Si escriben '5', el valor ASCII es 53. Entonces restamos '0' (que es 48 en ASCII):
+
 ```assembly
 SUB AL, '0'    ; 53 - 48 = 5
 ```
@@ -88,6 +174,7 @@ SUB AL, '0'    ; 53 - 48 = 5
 **Estudiante 2**: La recursión en ensamblador consume mucha pila y es más lenta. Con iteración es más eficiente.
 
 **Estudiante 1**: Primero manejamos los casos base:
+
 ```assembly
 CMP AL, 0
 JE CASO_CERO    ; Si n=0, retornamos 0
@@ -96,11 +183,13 @@ JE CASO_UNO     ; Si n=1, retornamos 1
 ```
 
 **Estudiante 3**: Para n >= 2, usamos un bucle. Inicializamos:
+
 - BX = 0 (Fibonacci anterior anterior)
 - DX = 1 (Fibonacci anterior)
 - CL = n-1 (contador)
 
 **Estudiante 2**: En cada iteración calculamos:
+
 ```assembly
 MOV AX, BX      ; AX = Fib(i-2)
 ADD AX, DX      ; AX = Fib(i-2) + Fib(i-1)
@@ -117,6 +206,7 @@ MOV DX, AX
 **Estudiante 3**: Para imprimir el número, tenemos que convertirlo de binario a decimal.
 
 **Estudiante 2**: Dividimos el número entre 10 repetidamente:
+
 ```assembly
 DIV BX    ; AX = AX / 10, DX = residuo
 ```
@@ -136,12 +226,14 @@ DIV BX    ; AX = AX / 10, DX = residuo
 **Estudiante 1**: Al construir el programa, primero investigamos sobre las interrupciones de DOS.
 
 **Estudiante 3**: Encontramos que `INT 21h` tiene muchas funciones:
+
 - **AH=01h**: Lee un caracter
 - **AH=02h**: Imprime un caracter
 - **AH=09h**: Imprime una cadena terminada en '$'
 - **AH=4Ch**: Termina el programa
 
 **Estudiante 2**: También tuvimos que entender las instrucciones de comparación y salto:
+
 - **CMP**: Compara dos valores
 - **JE**: Salta si son iguales (Jump if Equal)
 - **JA**: Salta si es mayor (Jump if Above)
@@ -158,47 +250,61 @@ DIV BX    ; AX = AX / 10, DX = residuo
 **Estudiante 2**: Déjeme explicar algunas instrucciones clave que usamos:
 
 ### MOV (Move)
+
 **Estudiante 1**: Copia datos de un lugar a otro. Por ejemplo:
+
 ```assembly
 MOV AX, 5    ; Mueve el valor 5 al registro AX
 MOV BX, AX   ; Copia el valor de AX a BX
 ```
 
 ### ADD y SUB
+
 **Estudiante 3**: ADD suma, SUB resta:
+
 ```assembly
 ADD AX, BX   ; AX = AX + BX
 SUB AL, '0'  ; AL = AL - 48
 ```
 
 ### MUL y DIV
+
 **Estudiante 2**: MUL multiplica (sin signo), DIV divide:
+
 ```assembly
 MUL BX       ; AX = AX * BX
 DIV BX       ; AX = AX / BX, DX = residuo
 ```
 
 ### PUSH y POP
+
 **Estudiante 1**: Guardan y recuperan valores de la pila:
+
 ```assembly
 PUSH AX      ; guarda AX en la pila
 POP AX       ; recupera AX de la pila
 ```
 
 ### LOOP
+
 **Estudiante 3**: Decrementa CX y salta si CX != 0:
+
 ```assembly
 LOOP etiqueta   ; CX--, si CX != 0 salta
 ```
 
 ### LEA (Load Effective Address)
+
 **Estudiante 2**: Carga la dirección de una variable:
+
 ```assembly
 LEA DX, mensaje   ; DX apunta al mensaje
 ```
 
 ### INT (Interrupt)
+
 **Estudiante 1**: Llama a servicios del sistema operativo:
+
 ```assembly
 INT 21h      ; Interrupción de DOS
 ```
@@ -214,6 +320,7 @@ INT 21h      ; Interrupción de DOS
 **Estudiante 1**: También tuvimos un bug al imprimir el número 0. No entraba al bucle y no imprimía nada.
 
 **Estudiante 3**: Lo arreglamos agregando un caso especial:
+
 ```assembly
 CMP AX, 0
 JNE CONVERTIR_LOOP
@@ -226,6 +333,7 @@ INT 21h
 ## Parte 10: Compilación y Pruebas
 
 **Estudiante 2**: Para compilar usamos Turbo Assembler:
+
 ```
 tasm fibonacci.asm
 tlink fibonacci.obj
@@ -252,16 +360,21 @@ tlink fibonacci.obj
 ## Preguntas Frecuentes del Profesor
 
 ### P1: ¿Por qué usan el registro AL para pasar n a CALCULAR_FIBONACCI?
+
 **R**: Porque n es un valor pequeño (0-24) que cabe en 8 bits. AL es perfecto para esto y es más eficiente que usar AX completo.
 
 ### P2: ¿Qué pasaría si n fuera mayor a 24?
+
 **R**: El programa muestra un mensaje de error y pide otro número. Pero si lo calculáramos, Fib(25) = 75025, que todavía cabe en 16 bits. El límite real es Fib(46) antes de desbordar 16 bits.
 
 ### P3: ¿Por qué guardan registros con PUSH al inicio de cada procedimiento?
+
 **R**: Para preservar el estado de los registros. Si no lo hacemos, podríamos sobrescribir valores que el procedimiento llamador necesita.
 
 ### P4: ¿Pueden explicar cómo funciona LOOP exactamente?
+
 **R**: LOOP hace dos cosas: decrementa CX en 1, y si CX no es cero, salta a la etiqueta indicada. Es como un "for" en C pero más compacto.
 
 ### P5: ¿Por qué usan '$' para terminar las cadenas?
+
 **R**: Es la convención de DOS. La interrupción INT 21h con AH=09h imprime caracteres hasta encontrar un '$'.
